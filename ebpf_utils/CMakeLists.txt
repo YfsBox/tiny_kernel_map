@@ -1,17 +1,15 @@
-set(CXX_FLAGS
+set(C_FLAGS
         -g
         -Wall
-        -std=c++14
+        -std=c99
         -D_PTHREADS
-        -Wno-unused-parameter
-        -O3
         )
 
-set(CMAKE_CXX_COMPILER "g++")
-set(CMAKE_CXX_FLAGS_DEBUG "-O3")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_C_COMPILER "g++")
+set(CMAKE_C_FLAGS_DEBUG "-O3")
+set(CMAKE_C_FLAGS_RELEASE "-O3")
 
-string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
+string(REPLACE ";" " " CMAKE_C_FLAGS "${C_FLAGS}")
 
 # Tell cmake where to find BpfObject module
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake)
@@ -47,18 +45,23 @@ find_package(BpfObject REQUIRED)
 file(GLOB apps *.bpf.c)
 SET(skel_list)
 
-foreach(app ${apps})
-    get_filename_component(app_stem ${app} NAME_WE)
-    # Build object skeleton and depend skeleton on libbpf build
-    bpf_object(${app_stem} ${app_stem}.bpf.c)
-    add_dependencies(${app_stem}_skel libbpf-build)
-    list(APPEND skel_list ${app_stem}_skel)
-endforeach()
+
+#foreach(app ${apps})
+#    get_filename_component(app_stem ${app} NAME_WE)
+#    bpf_object(${app_stem} ${app_stem}.bpf.c)
+#    add_dependencies(${app_stem}_skel libbpf-build)
+#    list(APPEND skel_list ${app_stem}_skel)
+# endforeach()
+
+bpf_object(kernel kernel_info.c kernel.bpf.c)
+add_dependencies(kernel_skel libbpf-build)
+list(APPEND skel_list kernel_skel)
+
 
 string(REPLACE ";" " " SKEL_LIST "${skel_list}")
 
 set(BPF_SRC
-        ../src/EbpfKv.cc)
+        ../src/kernel_mapserver.c)
 
 add_library(bpftools ${BPF_SRC})
 target_link_libraries(bpftools ${skel_list} rt)
