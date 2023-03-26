@@ -61,7 +61,8 @@ list(APPEND skel_list kernel_skel)
 string(REPLACE ";" " " SKEL_LIST "${skel_list}")
 
 set(BPF_SRC
-        ../src/kernel_mapserver.c)
+        ../src/kernel_mapserver.c
+        ../src/kstatic_info_collector.c)
 
 add_library(bpftools ${BPF_SRC})
 target_link_libraries(bpftools ${skel_list} rt)
