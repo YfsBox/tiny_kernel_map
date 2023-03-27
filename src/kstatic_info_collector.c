@@ -7,7 +7,7 @@
 #include "common.h"
 #include "kstatic_info_collector.h"
 #include "../ebpf_utils/kernel_info.h"
-#include "../ebpf_utils/kernel.skel.h"
+#include "ebpf_utils/kernel.skel.h"
 
 
 static int handle_kstatic_info_init(void *ctx, void *data, size_t data_z) {

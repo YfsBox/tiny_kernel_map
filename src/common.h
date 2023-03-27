@@ -10,24 +10,12 @@
 
 #define TS_BUF_LEN 32
 
-void set_now_time(char ts_buf[TS_BUF_LEN]) {
-    struct tm *now;
-    time_t t;
-    time(&t);
-    now = localtime(&t);
-    strftime(ts_buf, sizeof(ts_buf), "%H:%M:%S", now);
-}
+void set_now_time(char ts_buf[TS_BUF_LEN]);
 
-static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args) {
-    if (level == LIBBPF_DEBUG)
-        return 0;
-    return vfprintf(stderr, format, args);
-}
+int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args);
 
 static volatile bool exiting = false;
 
-static void sig_handler(int sig) {
-    exiting = true;
-}
+void sig_handler(int sig);
 
 #endif //KERNEL_MAP_COMMON_H

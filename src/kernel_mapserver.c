@@ -9,8 +9,9 @@ int main(int argc, char **argv) {
     signal(SIGINT, sig_handler);
     signal(SIGTERM, sig_handler);
 
-    struct kstatic_info_collector *collector = (struct kstatic_info_collector *) calloc(0, sizeof(struct kstatic_info_collector));
+    struct kstatic_info_collector *collector = (struct kstatic_info_collector *)
+            calloc(0, sizeof(struct kstatic_info_collector));
     start_kstatic_info_collector(collector);
-
+    close_kstatic_info_collector(collector);
 }
 
