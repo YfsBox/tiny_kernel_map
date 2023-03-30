@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="2b3ceceb-add4-49d7-a4e4-f2022116ce0c" name="kernalmap">
+        <fileTransfer accessType="SFTP" host="120.46.138.106" port="22" sshConfigId="3edd11e4-ec1c-4218-8703-f61c4a5e9dc6" sshConfig="root@120.46.138.106:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

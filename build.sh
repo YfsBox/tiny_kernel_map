@@ -1,6 +1,6 @@
 #!/bin/bash
 
-chmod +x ebpf_utils/tools/bpftool
+chmod +x bpfs/tools/bpftool
 rm -r build
 mkdir build
 cd build

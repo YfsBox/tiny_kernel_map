@@ -2,6 +2,7 @@
 // Created by 杨丰硕 on 2023/3/27.
 //
 #include "common.h"
+#include "kernel.skel.h"
 
 
 void set_now_time(char ts_buf[TS_BUF_LEN]) {
