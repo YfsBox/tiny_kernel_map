@@ -12,6 +12,8 @@ LIBBPF_OBJ := /usr/lib64/libbpf.a
 .PHONY: all
 bpf: $(TARGET_BPF)
 main: $(TARGET)
+test:
+	$(go_env) go test -v
 
 go_env := CC=clang CGO_CFLAGS="-I $(LIBBPF_HEADERS)" CGO_LDFLAGS="$(LIBBPF_OBJ)"
 $(TARGET): $(GO_SRC)
@@ -24,5 +26,4 @@ $(TARGET_BPF): $(BPF_SRC)
 
 .PHONY: clean
 clean:
-	rm $(TARGET_BPF)
 	rm $(TARGET)

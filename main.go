@@ -1,4 +1,4 @@
-package main
+package kernel_hash
 
 import (
 	"C"

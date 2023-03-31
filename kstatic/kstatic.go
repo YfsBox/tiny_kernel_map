@@ -1,8 +1,10 @@
 package kstatic
 
 import (
+	"encoding/binary"
 	helpers "github.com/aquasecurity/libbpfgo/helpers"
 	"kernel_hash/common"
+	"log"
 	"unsafe"
 )
 
@@ -38,6 +40,7 @@ func InitKstaticWorker(symbols []string) (*KstaticWorker, error) {
 	if err = worker.newKernelSymbolsTable(); err != nil {
 		return nil, err
 	}
+	worker.SymbolNames = make([]string, len(symbols))
 	copy(worker.SymbolNames, symbols)
 	return worker, err
 }
@@ -59,6 +62,7 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 	var err error
 	kallsyms_map := make(map[string]*helpers.KernelSymbol)
 	for _, name := range ksworker.SymbolNames {
+		log.Printf("Begin load symbol %v......", name)
 		symbol, err := ksworker.KernelSymbols.GetSymbolByName(GlobalSymbolOwner, name)
 		if err == nil {
 			kallsyms_map[name] = symbol
@@ -66,7 +70,7 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 	}
 	kernel_map := ksworker.GetKstaticMap()
 	for ksym_name, value := range kallsyms_map {
-		key := make([]byte, 10)
+		key := make([]byte, 64)
 		copy(key, ksym_name)
 		address := value.Address
 		err := kernel_map.Map.Update(unsafe.Pointer(&key[0]), unsafe.Pointer(&address))
@@ -75,4 +79,23 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 		}
 	}
 	return err
+}
+
+func (ksworker *KstaticWorker) DumpKallsymsValues() (map[string]uint64, error) {
+	var err error
+	kmap := ksworker.GetKstaticMap()
+	symbols_len := len(ksworker.SymbolNames)
+	values_map := make(map[string]uint64)
+	for i := 0; i < symbols_len; i++ {
+		name := make([]byte, 64)
+		symbol_name := ksworker.SymbolNames[i]
+		copy(name, symbol_name)
+		value, err := kmap.Map.GetValue(unsafe.Pointer(&name[0]))
+		if err != nil {
+			log.Printf("kworker GetValue by key %v from KstaticMap error: %v", symbol_name, err)
+			return nil, err
+		}
+		values_map[symbol_name] = binary.LittleEndian.Uint64(value)
+	}
+	return values_map, err
 }
