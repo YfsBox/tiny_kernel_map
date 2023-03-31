@@ -1,4 +1,4 @@
 [submodule "bpfs/libbpf"]
 	path = bpfs/libbpf
 	url = https://github.com/libbpf/libbpf
-	branch = 3783577
+	branch = master
