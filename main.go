@@ -28,13 +28,13 @@ func main() {
 	AssertError(err)
 	prog, err := bpfModule.GetProgram("hello_bpftrace")
 	AssertError(err)
-
 	_, err = prog.AttachRawTracepoint("sys_enter")
 	AssertError(err)
 
 	event_channel := make(chan []byte, 300)
 	defer close(event_channel)
 	log.Printf("begin Init ring buf")
+
 	ringbuf, err := bpfModule.InitRingBuf("mrb", event_channel)
 	AssertError(err)
 	defer ringbuf.Close()
