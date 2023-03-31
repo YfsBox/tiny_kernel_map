@@ -6,8 +6,8 @@ TARGET_BPF := $(TARGET).bpf.o
 GO_SRC := *.go
 BPF_SRC := *.bpf.c
 
-LIBBPF_HEADERS := /usr/include/bpf
-LIBBPF_OBJ := /usr/lib64/libbpf.a
+LIBBPF_HEADERS := bpfs/libbpf/src
+LIBBPF_OBJ := build/bpfs/libbpf/libbpf.a
 
 .PHONY: all
 bpf: $(TARGET_BPF)

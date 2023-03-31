@@ -1,0 +1,4 @@
+[submodule "bpfs/libbpf"]
+	path = bpfs/libbpf
+	url = https://github.com/libbpf/libbpf
+	branch = v1.1.0

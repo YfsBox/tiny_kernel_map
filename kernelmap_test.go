@@ -14,6 +14,7 @@ func Test_InitKstaticWorker(t *testing.T) {
 		"__stop___ex_table",
 		"init_task",
 		"sys_call_table",
+		"idt_table",
 	}
 	if worker, err = kstatic.InitKstaticWorker(symbols); err != nil {
 		t.Fatalf("InitKstaticWoker error: %v", err)
