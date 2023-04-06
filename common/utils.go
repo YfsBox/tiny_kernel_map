@@ -7,10 +7,10 @@ const (
 	BpfObjSuffix     = ".bpf.o"
 )
 
-var DebugOn bool
+var DebugOn = true
 
 func DPrintf(format string, args ...any) {
-	if DebugOn {
+	if DebugOn == true {
 		log.Printf(format, args)
 	}
 }

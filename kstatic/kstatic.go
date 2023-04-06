@@ -26,7 +26,8 @@ func InitKstaticWorker(symbols []string) (*KstaticWorker, error) {
 	var err error
 	worker := &KstaticWorker{}
 	handles := []common.AttachHandle{
-		{common.KRawTracePointType, "hello_bpftrace", "sys_enter"},
+		{common.KTracePointType, "register_modules", "syscalls/sys_enter_init_module"},
+		{common.KTracePointType, "test_ringbuf", "syscalls/sys_enter_execve"},
 	}
 	rbufs := []string{
 		KStaticRingBufName,
@@ -35,6 +36,7 @@ func InitKstaticWorker(symbols []string) (*KstaticWorker, error) {
 		KStaticMapName,
 	}
 	if worker.Core, err = common.InitWorkercore(KernelStaticBpfObjName, handles, rbufs, maps); err != nil {
+		log.Printf("InitWorkercoer err: %v", err)
 		return nil, err
 	}
 	if err = worker.newKernelSymbolsTable(); err != nil {
@@ -62,7 +64,6 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 	var err error
 	kallsyms_map := make(map[string]*helpers.KernelSymbol)
 	for _, name := range ksworker.SymbolNames {
-		log.Printf("Begin load symbol %v......", name)
 		symbol, err := ksworker.KernelSymbols.GetSymbolByName(GlobalSymbolOwner, name)
 		if err == nil {
 			kallsyms_map[name] = symbol
@@ -98,4 +99,20 @@ func (ksworker *KstaticWorker) DumpKallsymsValues() (map[string]uint64, error) {
 		values_map[symbol_name] = binary.LittleEndian.Uint64(value)
 	}
 	return values_map, err
+}
+
+func (ksworker *KstaticWorker) GetRingBUffer() *common.UserRingBuf {
+	return ksworker.Core.MsgRingBufs[KStaticRingBufName]
+}
+
+func (ksworker *KstaticWorker) StartPollRingBuffer() {
+	rb := ksworker.GetRingBUffer()
+	log.Printf("begin poll ring buffer")
+	for {
+		select {
+		case data := <-rb.Info.BufChan:
+			data_str := string(data)
+			log.Printf("%v", data_str)
+		}
+	}
 }

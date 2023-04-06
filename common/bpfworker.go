@@ -38,6 +38,7 @@ func InitWorkercore(mname string, handles []AttachHandle, rbufs []string, maps [
 	log.Printf("New Moudle From %v ok", mname)
 
 	if err = core.Moudle.BPFLoadObject(); err != nil {
+		log.Printf("loadObject error: %v", err)
 		return nil, err
 	}
 	log.Printf("Load BpfObject %v ok", mname)
@@ -46,11 +47,17 @@ func InitWorkercore(mname string, handles []AttachHandle, rbufs []string, maps [
 	handles_len := len(handles)
 	for i := 0; i < handles_len; i++ {
 		if err = core.setProgPoint(handles[i]); err != nil {
-			log.Printf("Set Prog Point %v error: %v", handles[i], err)
 			return nil, err
 		}
 	}
-	log.Printf("Set Prog Points ok")
+
+	for prog, point := range core.ProgsMap {
+		if err = point.Attach(); err != nil {
+			log.Printf("Attach %v error %v", prog, err)
+			return nil, err
+		}
+	}
+	log.Printf("Attach progs ok")
 
 	rbufs_len := len(rbufs)
 	core.MsgRingBufs = make(map[string]*UserRingBuf)

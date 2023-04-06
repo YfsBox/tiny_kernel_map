@@ -1,12 +1,13 @@
 package common
 
 import (
-	"fmt"
 	bpfgo "github.com/aquasecurity/libbpfgo"
+	"strings"
 )
 
 const (
-	KRawTracePointType = iota
+	KTracePointType = iota
+	KRawTracePointType
 	KKprobe
 )
 
@@ -27,8 +28,11 @@ func (attach *AttachPoint) Attach() error {
 		_, err = attach.OwnerProg.AttachRawTracepoint(attach.Handle.EventType)
 	} else if attach.Handle.AttachType == KKprobe {
 		_, err = attach.OwnerProg.AttachKprobe(attach.Handle.EventType)
-	} else {
-		err = fmt.Errorf("The Attach is not valid")
+	} else if attach.Handle.AttachType == KTracePointType {
+		dir_and_file := strings.Split(attach.Handle.EventType, "/")
+		dir := dir_and_file[0]
+		file := dir_and_file[1]
+		_, err = attach.OwnerProg.AttachTracepoint(dir, file)
 	}
 	return err
 }

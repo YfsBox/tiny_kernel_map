@@ -5,7 +5,7 @@
       <paths name="HuaWeiYun (b906d694-d99f-40cd-b6c6-a7dde3d5cd73)">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp/tmp.nqQXNyiwWv" local="$PROJECT_DIR$" />
+            <mapping deploy="/tmp/tmp.dsGWnqBv3S" local="$PROJECT_DIR$" />
           </mappings>
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug" />
@@ -16,6 +16,13 @@
         <serverdata>
           <mappings>
             <mapping deploy="/root/bpf_project/kernel_hashmap" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="local">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/yfs/kernel_hash/kernel_hash" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

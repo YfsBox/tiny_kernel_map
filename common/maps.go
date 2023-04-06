@@ -46,7 +46,7 @@ func NewRingBuf(name string, owner *bpfgo.Module) (*UserRingBuf, error) {
 	var err error
 	urbuf := &UserRingBuf{
 		Info: BpfMapInfo{
-			name, owner, make(chan []byte, KDefaultChanSize),
+			name, owner, make(chan []byte),
 		},
 	}
 	if urbuf.RingBuf, err = owner.InitRingBuf(name, urbuf.Info.BufChan); err != nil {
