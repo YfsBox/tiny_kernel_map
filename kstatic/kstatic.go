@@ -1,5 +1,6 @@
 package kstatic
 
+import "C"
 import (
 	"encoding/binary"
 	helpers "github.com/aquasecurity/libbpfgo/helpers"
@@ -14,6 +15,12 @@ const (
 	KStaticMapName         = "kstatic_map"
 	MaxKsymNameLen         = 64
 	GlobalSymbolOwner      = "system"
+
+	StartExTblIdx = 0
+	StopExTblIdx  = 1
+	InitTaskIdx   = 2
+	SysCallTblIdx = 3
+	IdtTbldIdx    = 4
 )
 
 type KstaticWorker struct {
@@ -70,12 +77,13 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 		}
 	}
 	kernel_map := ksworker.GetKstaticMap()
-	for ksym_name, value := range kallsyms_map {
-		key := make([]byte, 64)
-		copy(key, ksym_name)
-		address := value.Address
-		err := kernel_map.Map.Update(unsafe.Pointer(&key[0]), unsafe.Pointer(&address))
+	symbol_len := len(ksworker.SymbolNames)
+	for i := 0; i < symbol_len; i++ {
+		key := uint32(i)
+		address := kallsyms_map[ksworker.SymbolNames[i]].Address
+		err := kernel_map.Map.Update(unsafe.Pointer(&key), unsafe.Pointer(&address))
 		if err != nil {
+			log.Printf("The err is %v when map.update", err)
 			return err
 		}
 	}
@@ -88,10 +96,9 @@ func (ksworker *KstaticWorker) DumpKallsymsValues() (map[string]uint64, error) {
 	symbols_len := len(ksworker.SymbolNames)
 	values_map := make(map[string]uint64)
 	for i := 0; i < symbols_len; i++ {
-		name := make([]byte, 64)
+		var idx = uint32(i)
 		symbol_name := ksworker.SymbolNames[i]
-		copy(name, symbol_name)
-		value, err := kmap.Map.GetValue(unsafe.Pointer(&name[0]))
+		value, err := kmap.Map.GetValue(unsafe.Pointer(&idx))
 		if err != nil {
 			log.Printf("kworker GetValue by key %v from KstaticMap error: %v", symbol_name, err)
 			return nil, err
@@ -107,12 +114,19 @@ func (ksworker *KstaticWorker) GetRingBUffer() *common.UserRingBuf {
 
 func (ksworker *KstaticWorker) StartPollRingBuffer() {
 	rb := ksworker.GetRingBUffer()
+	rb.Start()
 	log.Printf("begin poll ring buffer")
-	for {
-		select {
-		case data := <-rb.Info.BufChan:
-			data_str := string(data)
-			log.Printf("%v", data_str)
+	go func() {
+		for {
+			select {
+			case data := <-rb.Info.BufChan:
+				data_str := string(data)
+				log.Printf("%v", data_str)
+			}
 		}
-	}
+	}()
+}
+
+func (ksworker *KstaticWorker) ReadFromSystbl() {
+
 }

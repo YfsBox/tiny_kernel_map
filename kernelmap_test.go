@@ -51,6 +51,6 @@ func Test_InitKstaticWorker(t *testing.T) {
 
 	worker.StartPollRingBuffer()
 
-	// wg.Wait()
+	wg.Wait()
 
 }
