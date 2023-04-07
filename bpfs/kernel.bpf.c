@@ -6,6 +6,14 @@
 #define MAX_KSYM_NAME_SIZE 64
 #define MAX_MSG_STR_SIZE 128
 
+
+const __u32 START_EXTBL_MAP_IDX = 1;
+const __u32 STOP_EXTBL_MAP_IDX = 2;
+const __u32 INIT_TASK_MAP_IDX = 3;
+const __u32 SYSTBL_MAP_IDX = 4;
+const __u32 IDT_MAP_IDX = 5;
+
+
 extern char __start___ex_table[];
 extern char __stop___ex_table[];
 
@@ -35,11 +43,6 @@ struct {
 
 const volatile unsigned long long min_duration_ns = 0;
 
-inline __u64 get_ksymbol_addr(__u32 idx) {
-    __u64 *sysaddr = bpf_map_lookup_elem(&kstatic_map, &idx);
-    return *sysaddr;
-}
-
 SEC("tracepoint/syscalls/sys_enter_init_module")
 int register_modules(struct trace_event_raw_sys_enter *ctx) {
     char tmpbuf[256];
@@ -57,23 +60,18 @@ SEC("tracepoint/syscalls/sys_enter_execve")
 int test_ringbuf(struct trace_event_raw_sys_enter *ctx) {
     
     __u64 *val;
-    const char key[] = "sys_call_table";
-    struct ksym_name keyname;
-    bpf_probe_read_str(keyname.str, MAX_KSYM_NAME_SIZE, key);
-
-    bpf_printk("%s", keyname.str);
-
-    __u64 *sysaddr = bpf_map_lookup_elem(&kstatic_map, &keyname);;
-    char *sysaddrp = (char *) sysaddr;
+    __u32 idx = START_EXTBL_MAP_IDX;
+    __u64 *sysaddr = bpf_map_lookup_elem(&kstatic_map, &idx);
+    char *sysaddr_ptr = (char *) sysaddr;
 
     struct ring_buffer_msg msg;
-    bpf_probe_read_str(msg.msg_, MAX_KSYM_NAME_SIZE, sysaddrp);
+    bpf_probe_read_str(msg.msg_, MAX_KSYM_NAME_SIZE, sysaddr_ptr);
 
     struct ring_buffer_msg *rb_msg = bpf_ringbuf_reserve(&mrb, sizeof(struct ring_buffer_msg), 0);
     if (!rb_msg) {
         return 0;
     }
-    bpf_probe_read_str(rb_msg->msg_, MAX_KSYM_NAME_SIZE, sysaddrp);
+    bpf_probe_read_str(rb_msg->msg_, MAX_KSYM_NAME_SIZE, sysaddr_ptr);
     bpf_ringbuf_submit(rb_msg, 0);
 
     return 0;
