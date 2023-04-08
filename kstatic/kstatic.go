@@ -3,6 +3,7 @@ package kstatic
 import "C"
 import (
 	"encoding/binary"
+	"fmt"
 	helpers "github.com/aquasecurity/libbpfgo/helpers"
 	"kernel_hash/common"
 	"log"
@@ -20,11 +21,11 @@ const (
 	MaxKsymNameLen         = 64
 	GlobalSymbolOwner      = "system"
 
-	StartExTblIdx = 0
+	/*StartExTblIdx = 0
 	StopExTblIdx  = 1
 	InitTaskIdx   = 2
 	SysCallTblIdx = 3
-	IdtTbldIdx    = 4
+	IdtTbldIdx    = 4*/
 
 	StartExTableSymbol = "__start___ex_table"
 	StopExTableSymbol  = "__stop___ex_table"
@@ -34,6 +35,8 @@ const (
 
 	LoadfdGlobal  = "init_handle_fd"
 	UserPidGlobal = "user_pid"
+
+	LoadKernelMemMsg = "LOAD OK"
 )
 
 type KstaticWorker struct {
@@ -167,6 +170,34 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 	return err
 }
 
+func (ksworker *KstaticWorker) LoadKernelMemory() error {
+	if ksworker.LoadHandlefd <= 0 {
+		return fmt.Errorf("The Loadhandle fd is not open right")
+	}
+	buf := make([]byte, 8)
+	binary.LittleEndian.PutUint64(buf, uint64(1))
+
+	var rb = ksworker.GetRingBUffer()
+	rb.Start()
+
+	var load_time = len(ksworker.SymbolNames)
+	for load_time > 0 {
+		if _, err := syscall.Write(ksworker.LoadHandlefd, buf); err != nil {
+			return fmt.Errorf("Write to loadHandle error: %v", err)
+		}
+		select {
+		case data := <-rb.Info.BufChan:
+			data_str := string(data)
+			if data_str != LoadKernelMemMsg {
+				log.Printf("%v", data_str)
+				load_time--
+			}
+		}
+	}
+
+	return nil
+}
+
 func (ksworker *KstaticWorker) DumpKallsymsValues() (map[string]uint64, map[string]uint64, error) {
 	var err error
 	kmap := ksworker.GetKstaticMap()
@@ -203,7 +234,9 @@ func (ksworker *KstaticWorker) GetRingBUffer() *common.UserRingBuf {
 
 func (ksworker *KstaticWorker) StartPollRingBuffer() {
 	rb := ksworker.GetRingBUffer()
-	rb.Start()
+	if !rb.Info.Started {
+		rb.Start()
+	}
 	log.Printf("begin poll ring buffer")
 	go func() {
 		for {
@@ -214,8 +247,4 @@ func (ksworker *KstaticWorker) StartPollRingBuffer() {
 			}
 		}
 	}()
-}
-
-func (ksworker *KstaticWorker) ReadFromSystbl() {
-
 }

@@ -8,6 +8,7 @@ const (
 )
 
 type BpfMapInfo struct {
+	Started bool
 	Name    string
 	Owner   *bpfgo.Module
 	BufChan chan []byte
@@ -32,7 +33,7 @@ func NewPerfBuf(name string, owner *bpfgo.Module) (*UserPerfBuf, error) {
 	var err error
 	upbuf := &UserPerfBuf{
 		Info: BpfMapInfo{
-			name, owner, make(chan []byte, KDefaultChanSize),
+			false, name, owner, make(chan []byte, KDefaultChanSize),
 		},
 	}
 	if upbuf.PerfBuf, err = owner.InitPerfBuf(name, upbuf.Info.BufChan, nil, KDefaultPageCnt); err != nil {
@@ -46,7 +47,7 @@ func NewRingBuf(name string, owner *bpfgo.Module) (*UserRingBuf, error) {
 	var err error
 	urbuf := &UserRingBuf{
 		Info: BpfMapInfo{
-			name, owner, make(chan []byte),
+			false, name, owner, make(chan []byte),
 		},
 	}
 	if urbuf.RingBuf, err = owner.InitRingBuf(name, urbuf.Info.BufChan); err != nil {
@@ -60,7 +61,7 @@ func NewHashMap(name string, owner *bpfgo.Module) (*UserHashMap, error) {
 	var err error
 	hashmap := &UserHashMap{
 		Info: BpfMapInfo{
-			name, owner, nil,
+			false, name, owner, nil,
 		},
 	}
 	if hashmap.Map, err = owner.GetMap(name); err != nil {
@@ -70,20 +71,24 @@ func NewHashMap(name string, owner *bpfgo.Module) (*UserHashMap, error) {
 }
 
 func (rbuf *UserRingBuf) Start() {
+	rbuf.Info.Started = true
 	rbuf.RingBuf.Start()
 }
 
 func (rbuf *UserRingBuf) Close() {
+	rbuf.Info.Started = false
 	close(rbuf.Info.BufChan)
 	rbuf.RingBuf.Stop()
 	rbuf.RingBuf.Close()
 }
 
 func (pbuf *UserPerfBuf) Start() {
+	pbuf.Info.Started = true
 	pbuf.PerfBuf.Start()
 }
 
 func (pbuf *UserPerfBuf) Close() {
+	pbuf.Info.Started = false
 	close(pbuf.Info.BufChan)
 	pbuf.PerfBuf.Stop()
 	pbuf.PerfBuf.Close()

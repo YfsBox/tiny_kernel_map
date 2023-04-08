@@ -11,6 +11,7 @@ volatile int curr_load_symbol = 0;
 volatile unsigned long curr_load_size = 0;
 const volatile int init_handle_fd = 0;
 const volatile int user_pid = 0;
+const char load_mem_msg[] = "LOAD OK";
 
 struct init_context *load_init_context = NULL;
 
@@ -122,7 +123,7 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
     if (!msg) {
         return 0;
     }
-    bpf_probe_read_str(msg->msg_, MAX_MSG_STR_SIZE, rbuffer->buffer_);
+    bpf_probe_read_str(msg->msg_, sizeof(load_mem_msg), load_mem_msg);
     bpf_ringbuf_submit(msg, 0);
     return 0;
 }
