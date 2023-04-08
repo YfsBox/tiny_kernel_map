@@ -23,14 +23,7 @@ func Test_InitKstaticWorker(t *testing.T) {
 	var worker *kstatic.KstaticWorker
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	symbols := []string{
-		"__start___ex_table",
-		"__stop___ex_table",
-		"init_task",
-		"sys_call_table",
-		"idt_table",
-	}
-	if worker, err = kstatic.InitKstaticWorker(symbols); err != nil {
+	if worker, err = kstatic.InitKstaticWorker(); err != nil {
 		t.Fatalf("InitKstaticWoker error: %v", err)
 		return
 	}
@@ -39,14 +32,16 @@ func Test_InitKstaticWorker(t *testing.T) {
 		t.Fatalf("LoadKstaticWorker error: %v", err)
 		return
 	}
-	var values_map map[string]uint64
-	if values_map, err = worker.DumpKallsymsValues(); err != nil {
+	var addr_map map[string]uint64
+	var size_map map[string]uint64
+	if addr_map, size_map, err = worker.DumpKallsymsValues(); err != nil {
 		t.Fatalf("DumpKallSymbols Value error: %v", err)
 		return
 	}
 
-	for name, addr := range values_map {
-		t.Logf("Symbol Name: %v, Symbol addr: 0x%016x", name, addr)
+	for name, _ := range addr_map {
+		t.Logf("Symbol Name: %v, Symbol addr: 0x%016x", name, addr_map[name])
+		t.Logf("Symbol Name: %v, Symbol load size: 0x%016x", name, size_map[name])
 	}
 
 	worker.StartPollRingBuffer()
