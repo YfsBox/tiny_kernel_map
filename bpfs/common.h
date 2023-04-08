@@ -8,7 +8,7 @@
 #define TS_BUF_LEN 32
 #define MAX_KSYM_NAME_SIZE 64
 #define MAX_MSG_STR_SIZE 128
-#define MAX_BUFFER_SIZE 4096
+#define MAX_BUFFER_SIZE 8192
 
 typedef unsigned long uint32;
 

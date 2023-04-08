@@ -7,7 +7,7 @@
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 // 有关于init load相关的
-volatile int curr_load_symbol = -1;
+volatile int curr_load_symbol = 0;
 volatile unsigned long curr_load_size = 0;
 const volatile int init_handle_fd = 0;
 const volatile int user_pid = 0;
@@ -18,7 +18,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, 16);
     __type(key, uint32_t);
-    __type(value, base_offset_t);
+    __type(value, uint64_t);
 } kstatic_map SEC(".maps");
 
 struct {
@@ -40,8 +40,6 @@ struct {
     __type(value, struct read_buffer);
 } read_buffer_map SEC(".maps");
 
-struct read_buffer *rbuffer = NULL;
-
 const volatile unsigned long long min_duration_ns = 0;
 
 SEC("tracepoint/syscalls/sys_enter_init_module")
@@ -58,29 +56,29 @@ int register_modules(struct trace_event_raw_sys_enter *ctx) {
 }
 
 SEC("tracepoint/syscalls/sys_enter_execve")
-int test_ringbuf(struct trace_event_raw_sys_enter *ctx) {
-    __u64 *val;
-    __u32 idx = START_EXTBL_MAP_IDX;
-    /*
-    __u64 *sysaddr = bpf_map_lookup_elem(&kstatic_map, &idx);
-    char *sysaddr_ptr = (char *) sysaddr;
-
-    struct ring_buffer_msg msg;
-    bpf_probe_read_str(msg.msg_, MAX_KSYM_NAME_SIZE, sysaddr_ptr);
-
-    struct ring_buffer_msg *rb_msg = bpf_ringbuf_reserve(&mrb, sizeof(struct ring_buffer_msg), 0);
-    if (!rb_msg) {
-        return 0;
+int test_ringbuf(struct trace_event_raw_sys_enter *ctx) {   // some code for test
+    if (curr_load_symbol != 4) {
+        ++curr_load_symbol;
+    } else {
+        curr_load_symbol = 0;
     }
-    bpf_probe_read_str(rb_msg->msg_, MAX_KSYM_NAME_SIZE, sysaddr_ptr);
-    bpf_ringbuf_submit(rb_msg, 0);
-    */
+    int idx = curr_load_symbol;
+    uint64_t *base_offset = bpf_map_lookup_elem(&kstatic_map, &idx);
+    uint64_t *load_size = bpf_map_lookup_elem(&kstatic_size_map, &idx);
+    if (!base_offset || !load_size) {
+        bpf_printk("the base and load is null");
+    }
+    uint64_t offset;
+    uint64_t size;
+    bpf_probe_read(&offset, sizeof(uint64_t), base_offset);
+    bpf_probe_read(&size, sizeof(uint64_t), load_size);
+    bpf_printk("the load size is %llu, the idx %d, the offset is %llx", size, idx, offset);
     return 0;
 }
 
 SEC("tracepoint/syscalls/sys_enter_write")
 int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
-    /*if (curr_load_symbol >= END_SYMBOL_MAP_IDX) {
+    if (curr_load_symbol >= END_SYMBOL_MAP_IDX) {
         return 0;
     }
 
@@ -96,18 +94,27 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
 
     ++curr_load_symbol;
     int idx = curr_load_symbol;
-    base_offset_t *base_offset = bpf_map_lookup_elem(&kstatic_map, &idx);
-    uint32_t *load_size = bpf_map_lookup_elem(&kstatic_size_map, &idx);
+    uint64_t *base_offset = bpf_map_lookup_elem(&kstatic_map, &idx);
+    uint64_t *load_size = bpf_map_lookup_elem(&kstatic_size_map, &idx);
     if (!base_offset || !load_size) {
         return 0;
     }
 
+    uint64_t size, base;
+    bpf_probe_read(&size, sizeof(uint64_t), load_size);
+    bpf_probe_read(&base, sizeof(uint64_t), base_offset);
+    bpf_printk("the load size is %d, the base is %llx, the idx is %d", size, base, idx);
+
+    int rbidx = 0;
+    struct read_buffer *rbuffer = bpf_map_lookup_elem(&read_buffer_map, &rbidx);
     if (!rbuffer) {
-        int idx = 0;
-        rbuffer = bpf_map_lookup_elem(&read_buffer_map, &idx);
+        return 0;
+    }
+    if (size >= MAX_BUFFER_SIZE) {
+        return 0;
     }
 
-    bpf_probe_read_kernel(rbuffer->buffer_, *load_size, (void *) *base_offset);
+    bpf_probe_read_kernel(rbuffer->buffer_, (uint32_t) size, (char *) base);
     // do hash
 
     // submit for debug
@@ -116,6 +123,9 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
         return 0;
     }
     bpf_probe_read_str(msg->msg_, MAX_MSG_STR_SIZE, rbuffer->buffer_);
-    bpf_ringbuf_submit(msg, 0);*/
+    bpf_ringbuf_submit(msg, 0);
     return 0;
 }
+
+// 1. 尽量不使用*操作取指针中的值
+// 2. const volatile或者volatile表示可以在执行时可被修改,因此这是被用户态初始化全局变量的前提

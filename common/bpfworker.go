@@ -28,7 +28,7 @@ func (core *BpfWorkerCore) setProgPoint(handle AttachHandle) error {
 	return nil
 }
 
-func InitWorkercore(mname string, handles []AttachHandle, rbufs []string, maps []string, globals map[string]interface{}) (*BpfWorkerCore, error) {
+func InitWorkercore(mname string, handles []AttachHandle, rbufs []string, maps []string, globals map[string]int32) (*BpfWorkerCore, error) {
 	var err error
 	core := &BpfWorkerCore{}
 	core.MoudleName = mname
@@ -37,8 +37,8 @@ func InitWorkercore(mname string, handles []AttachHandle, rbufs []string, maps [
 	}
 	log.Printf("New Moudle From %v ok", mname)
 
-	for global, _ := range globals {
-		if err = core.Moudle.InitGlobalVariable(global, uint32(1)); err != nil {
+	for global, val := range globals {
+		if err = core.Moudle.InitGlobalVariable(global, val); err != nil {
 			log.Printf("The err is when Init Global %v: %v", global, err)
 			return nil, err
 		}

@@ -56,15 +56,15 @@ func eventfd(initval uint64, flags int) (int, error) {
 	return int(fd), nil
 }
 
-func (worker *KstaticWorker) initGlobalValues() (map[string]interface{}, error) {
+func (worker *KstaticWorker) initGlobalValues() (map[string]int32, error) {
 	var err error
-	globals := make(map[string]interface{}, 2)
-	globals[UserPidGlobal] = os.Getpid()
+	globals := make(map[string]int32, 2)
+	globals[UserPidGlobal] = int32(os.Getpid())
 	if worker.LoadHandlefd, err = eventfd(0, syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC); err != nil {
 		log.Printf("Create LoadEventfd err: %v", err)
 		return nil, err
 	}
-	globals[LoadfdGlobal] = worker.LoadHandlefd
+	globals[LoadfdGlobal] = int32(worker.LoadHandlefd)
 	return globals, nil
 }
 
@@ -93,7 +93,7 @@ func InitKstaticWorker() (*KstaticWorker, error) {
 		KSizeMapName,
 		KReadBufferMapName,
 	}
-	var globals_map map[string]interface{}
+	var globals_map map[string]int32
 	if globals_map, err = worker.initGlobalValues(); err != nil {
 		log.Printf("init global values error: %v", err)
 		return nil, err
