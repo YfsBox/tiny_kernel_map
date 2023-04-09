@@ -3,6 +3,7 @@
 #include "libbpf/src/bpf_tracing.h"
 #include "libbpf/src/bpf_core_read.h"
 #include "common.h"
+#include "hash.h"
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -58,7 +59,7 @@ int register_modules(struct trace_event_raw_sys_enter *ctx) {
 
 SEC("tracepoint/syscalls/sys_enter_execve")
 int test_ringbuf(struct trace_event_raw_sys_enter *ctx) {   // some code for test
-    if (curr_load_symbol != 4) {
+    if (curr_load_symbol < 4) {
         ++curr_load_symbol;
     } else {
         curr_load_symbol = 0;
@@ -93,8 +94,7 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
         return 0;
     }
 
-    ++curr_load_symbol;
-    int idx = curr_load_symbol;
+    int idx = curr_load_symbol++;
     uint64_t *base_offset = bpf_map_lookup_elem(&kstatic_map, &idx);
     uint64_t *load_size = bpf_map_lookup_elem(&kstatic_size_map, &idx);
     if (!base_offset || !load_size) {
@@ -115,18 +115,21 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
         return 0;
     }
 
-    bpf_probe_read_kernel(rbuffer->buffer_, (uint32_t) size, (char *) base);
+    bpf_probe_read_kernel(rbuffer->buffer_, size, (char *) base);
     // do hash
-
-    // submit for debug
-    struct ring_buffer_msg *msg = bpf_ringbuf_reserve(&mrb, sizeof(struct ring_buffer_msg), 0);
-    if (!msg) {
+    struct hash_msg_buffer *hash_msg = bpf_ringbuf_reserve(&mrb, sizeof(struct hash_msg_buffer), 0);
+    if (!hash_msg) {
         return 0;
     }
-    bpf_probe_read_str(msg->msg_, sizeof(load_mem_msg), load_mem_msg);
-    bpf_ringbuf_submit(msg, 0);
+    hash_uint8_t hash_value[SHA256_SIZE_BYTES];
+    sha256(rbuffer->buffer_, size, hash_value);
+    // bpf_probe_read(hash_msg->buffer_, MAX_MSG_STR_SIZE, (const char *) rbuffer->buffer_);
+    bpf_probe_read(hash_msg->buffer_, SHA256_SIZE_BYTES, (const void *) hash_value);
+    bpf_ringbuf_submit(hash_msg->buffer_, 0);
+
     return 0;
 }
 
 // 1. 尽量不使用*操作取指针中的值
 // 2. const volatile或者volatile表示可以在执行时可被修改,因此这是被用户态初始化全局变量的前提
+// 3. 读取内存内容时尽量别用bpf_probe_read_str，这样会因为0截断

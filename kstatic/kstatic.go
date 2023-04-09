@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
@@ -21,11 +22,11 @@ const (
 	MaxKsymNameLen         = 64
 	GlobalSymbolOwner      = "system"
 
-	/*StartExTblIdx = 0
+	StartExTblIdx = 0
 	StopExTblIdx  = 1
 	InitTaskIdx   = 2
 	SysCallTblIdx = 3
-	IdtTbldIdx    = 4*/
+	IdtTbldIdx    = 4
 
 	StartExTableSymbol = "__start___ex_table"
 	StopExTableSymbol  = "__stop___ex_table"
@@ -154,6 +155,8 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 			load_size = 4096
 		} else if name == StartExTableSymbol {
 			load_size = kallsyms_map[StopExTableSymbol].Address - address
+		} else if name == InitTaskSymbol {
+			load_size = 1972
 		}
 
 		err = kernel_map.Map.Update(unsafe.Pointer(&key), unsafe.Pointer(&address))
@@ -181,18 +184,23 @@ func (ksworker *KstaticWorker) LoadKernelMemory() error {
 	rb.Start()
 
 	var load_time = len(ksworker.SymbolNames)
-	for load_time > 0 {
+	for i := 0; i < load_time; {
 		if _, err := syscall.Write(ksworker.LoadHandlefd, buf); err != nil {
 			return fmt.Errorf("Write to loadHandle error: %v", err)
 		}
 		select {
 		case data := <-rb.Info.BufChan:
-			data_str := string(data)
-			if data_str != LoadKernelMemMsg {
-				log.Printf("%v", data_str)
-				load_time--
-			}
+			// data_str := string(data)
+			/*
+				if i == IdtTbldIdx {
+					common.PrintIDTTable(data)
+				} else {
+					common.PrintMemFormat(data)
+				}*/
+			log.Printf("The hash is %v", common.GetHexHashString(data))
+			i++
 		}
+		time.Sleep(1 * time.Second)
 	}
 
 	return nil
