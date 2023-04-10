@@ -42,6 +42,13 @@ struct {
     __type(value, struct read_buffer);
 } read_buffer_map SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 16);
+    __type(key, uint32_t);
+    __type(value, uint64_t);
+} kernel_crc_map SEC(".maps");
+
 const volatile unsigned long long min_duration_ns = 0;
 
 SEC("tracepoint/syscalls/sys_enter_init_module")
@@ -122,7 +129,7 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
         return 0;
     }
     hash_uint8_t hash_value[SHA256_SIZE_BYTES];
-    sha256(rbuffer->buffer_, size, hash_value);
+    // sha256(rbuffer->buffer_, size, hash_value);
     // bpf_probe_read(hash_msg->buffer_, MAX_MSG_STR_SIZE, (const char *) rbuffer->buffer_);
     bpf_probe_read(hash_msg->buffer_, SHA256_SIZE_BYTES, (const void *) hash_value);
     bpf_ringbuf_submit(hash_msg->buffer_, 0);

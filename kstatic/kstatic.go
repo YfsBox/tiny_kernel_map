@@ -19,6 +19,7 @@ const (
 	KStaticMapName         = "kstatic_map"
 	KSizeMapName           = "kstatic_size_map"
 	KReadBufferMapName     = "read_buffer_map"
+	KCrcmapName            = "kernel_crc_map"
 	MaxKsymNameLen         = 64
 	GlobalSymbolOwner      = "system"
 
@@ -96,6 +97,7 @@ func InitKstaticWorker() (*KstaticWorker, error) {
 		KStaticMapName,
 		KSizeMapName,
 		KReadBufferMapName,
+		KCrcmapName,
 	}
 	var globals_map map[string]int32
 	if globals_map, err = worker.initGlobalValues(); err != nil {
@@ -250,8 +252,7 @@ func (ksworker *KstaticWorker) StartPollRingBuffer() {
 		for {
 			select {
 			case data := <-rb.Info.BufChan:
-				data_str := string(data)
-				log.Printf("%v", data_str)
+				log.Printf("%v", common.GetHexHashString(data))
 			}
 		}
 	}()
