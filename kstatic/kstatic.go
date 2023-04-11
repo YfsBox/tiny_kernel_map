@@ -20,6 +20,7 @@ const (
 	KSizeMapName           = "kstatic_size_map"
 	KReadBufferMapName     = "read_buffer_map"
 	KCrcmapName            = "kernel_crc_map"
+	KGlobalValMapName      = "global_val_map"
 	MaxKsymNameLen         = 64
 	GlobalSymbolOwner      = "system"
 
@@ -35,8 +36,9 @@ const (
 	SysCallTableSymbol = "sys_call_table"
 	IdtTableSymbol     = "idt_table"
 
-	LoadfdGlobal  = "init_handle_fd"
-	UserPidGlobal = "user_pid"
+	CurrLoadSysmbolGlobal = "curr_load_sysmbol"
+	LoadfdGlobal          = "init_handle_fd"
+	UserPidGlobal         = "user_pid"
 
 	LoadKernelMemMsg = "LOAD OK"
 )
@@ -64,6 +66,7 @@ func eventfd(initval uint64, flags int) (int, error) {
 func (worker *KstaticWorker) initGlobalValues() (map[string]int32, error) {
 	var err error
 	globals := make(map[string]int32, 2)
+	globals[CurrLoadSysmbolGlobal] = 0
 	globals[UserPidGlobal] = int32(os.Getpid())
 	if worker.LoadHandlefd, err = eventfd(0, syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC); err != nil {
 		log.Printf("Create LoadEventfd err: %v", err)
@@ -98,14 +101,10 @@ func InitKstaticWorker() (*KstaticWorker, error) {
 		KSizeMapName,
 		KReadBufferMapName,
 		KCrcmapName,
-	}
-	var globals_map map[string]int32
-	if globals_map, err = worker.initGlobalValues(); err != nil {
-		log.Printf("init global values error: %v", err)
-		return nil, err
+		KGlobalValMapName,
 	}
 
-	if worker.Core, err = common.InitWorkercore(KernelStaticBpfObjName, handles, rbufs, maps, globals_map); err != nil {
+	if worker.Core, err = common.InitWorkercore(KernelStaticBpfObjName, handles, rbufs, maps); err != nil {
 		log.Printf("InitWorkercoer err: %v", err)
 		return nil, err
 	}
@@ -113,7 +112,17 @@ func InitKstaticWorker() (*KstaticWorker, error) {
 	if err = worker.newKernelSymbolsTable(); err != nil {
 		return nil, err
 	}
-	return worker, err
+
+	var globals_map map[string]int32
+	if globals_map, err = worker.initGlobalValues(); err != nil {
+		log.Printf("init global values error: %v", err)
+		return nil, err
+	}
+
+	if err = worker.LoadGlobalValues(globals_map); err != nil {
+		return nil, err
+	}
+	return worker, nil
 }
 
 func (ksworker *KstaticWorker) newKernelSymbolsTable() error {
@@ -130,6 +139,34 @@ func (ksworker *KstaticWorker) GetKstaticMap() *common.UserHashMap {
 
 func (ksworker *KstaticWorker) GetSymbolSizeMap() *common.UserHashMap {
 	return ksworker.Core.KernelMaps[KSizeMapName]
+}
+
+func (ksworker *KstaticWorker) GetGlobalValueMap() *common.UserHashMap {
+	return ksworker.Core.KernelMaps[KGlobalValMapName]
+}
+
+func (ksworker *KstaticWorker) LoadGlobalValues(globals map[string]int32) error {
+	global_map := ksworker.GetGlobalValueMap()
+	global_names := []string{
+		CurrLoadSysmbolGlobal,
+		LoadfdGlobal,
+		UserPidGlobal,
+	}
+	/*for i := 0; i < global_len; i++ {
+		key := int32(i)
+		value := globals[]
+		if err := global_map.Map.Update(unsafe.Pointer(&key), unsafe.Pointer(&value)); err != nil {
+			log.Printf("LoadGlobalValue error in Update: %v", err)
+			return err
+		}
+	}*/
+	for i, name := range global_names {
+		value := globals[name]
+		if err := global_map.Map.Update(unsafe.Pointer(&i), unsafe.Pointer(&value)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // 根据目标符号名，获取到其中的符号信息，返回该map
@@ -205,6 +242,19 @@ func (ksworker *KstaticWorker) LoadKernelMemory() error {
 		time.Sleep(1 * time.Second)
 	}
 
+	return nil
+}
+
+func (ksworker *KstaticWorker) DumpGlobals() error {
+	global_map := ksworker.GetGlobalValueMap()
+	for i := 0; i < 3; i++ {
+		value, err := global_map.Map.GetValue(unsafe.Pointer(&i))
+		if err != nil {
+			return err
+		}
+		val := binary.LittleEndian.Uint32(value)
+		log.Printf("the Global index is %v, the value is %v", i, val)
+	}
 	return nil
 }
 

@@ -44,6 +44,10 @@ func Test_InitKstaticWorker(t *testing.T) {
 		t.Logf("Symbol Name: %v, Symbol load size: 0x%016x", name, size_map[name])
 	}
 
+	if err = worker.DumpGlobals(); err != nil {
+		t.Fatalf("DumpGlobals error: %v", err)
+	}
+
 	log.Printf("Begin try to load kernel mem......")
 	if err = worker.LoadKernelMemory(); err != nil {
 		t.Fatalf("LoadKernelMemory error: %v", err)

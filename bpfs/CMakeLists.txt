@@ -1,6 +1,7 @@
 set(C_FLAGS
         -g
         -Wall
+        -O2
         -std=c99
         -D_PTHREADS
         )

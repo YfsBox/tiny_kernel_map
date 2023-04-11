@@ -7,7 +7,7 @@
 
 #define SHA256_SIZE_BYTES  (32)
 
-#define FN_ static inline __attribute__((const))
+#define FN_ static __always_inline
 
 typedef unsigned int hash_uint32_t;
 typedef unsigned char hash_uint8_t;
@@ -194,14 +194,15 @@ FN_ int sha256_done(struct sha256_context *ctx, hash_uint8_t *hash) {
     if (ctx) {
         j = ctx->len % sizeof(ctx->buf);
         ctx->buf[j] = 0x80;
+        volatile hash_uint8_t *bufptr = ctx->buf;
         for (i = j + 1; i < sizeof(ctx->buf); i++) {
-            ctx->buf[i] = 0x00;
+            bufptr[i] = 0x00;
         }
 
         if (ctx->len > 55) {
             _hash(ctx);
             for (j = 0; j < sizeof(ctx->buf); j++) {
-                ctx->buf[j] = 0x00;
+                bufptr[j] = 0x00;
             }
         }
 
@@ -238,7 +239,7 @@ FN_ int sha256(const void *data, unsigned len, hash_uint8_t *hash) {
 
     sha256_init(&ctx);
     sha256_hash(&ctx, data, len);
-    sha256_done(&ctx, hash);
+    // sha256_done(&ctx, hash);
     return 0;
 } // sha256
 
