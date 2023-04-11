@@ -36,7 +36,7 @@ struct ring_buffer_msg {
 };
 
 struct read_buffer {
-    unsigned char buffer_[MAX_BUFFER_SIZE];
+    char buffer_[MAX_BUFFER_SIZE];
 };
 
 struct global_values {

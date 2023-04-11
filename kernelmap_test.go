@@ -53,6 +53,11 @@ func Test_InitKstaticWorker(t *testing.T) {
 		t.Fatalf("LoadKernelMemory error: %v", err)
 	}
 
+	log.Printf("Begin dump the crc hash......")
+	if err = worker.DumpMemCrc(); err != nil {
+		t.Fatalf("DumpMemCrc error: %v", err)
+	}
+
 	worker.StartPollRingBuffer()
 	wg.Wait()
 

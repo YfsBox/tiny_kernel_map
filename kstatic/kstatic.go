@@ -145,6 +145,10 @@ func (ksworker *KstaticWorker) GetGlobalValueMap() *common.UserHashMap {
 	return ksworker.Core.KernelMaps[KGlobalValMapName]
 }
 
+func (ksworker *KstaticWorker) GetCrcHashMap() *common.UserHashMap {
+	return ksworker.Core.KernelMaps[KCrcmapName]
+}
+
 func (ksworker *KstaticWorker) LoadGlobalValues(globals map[string]int32) error {
 	global_map := ksworker.GetGlobalValueMap()
 	global_names := []string{
@@ -254,6 +258,20 @@ func (ksworker *KstaticWorker) DumpGlobals() error {
 		}
 		val := binary.LittleEndian.Uint32(value)
 		log.Printf("the Global index is %v, the value is %v", i, val)
+	}
+	return nil
+}
+
+func (ksworker *KstaticWorker) DumpMemCrc() error {
+	crc_map := ksworker.GetCrcHashMap()
+	kernel_num := len(ksworker.SymbolNames)
+	for i := 0; i < kernel_num; i++ {
+		value, err := crc_map.Map.GetValue(unsafe.Pointer(&i))
+		if err != nil {
+			return err
+		}
+		val := binary.LittleEndian.Uint64(value)
+		log.Printf("The crc hash is %v", val)
 	}
 	return nil
 }
