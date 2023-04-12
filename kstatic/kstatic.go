@@ -89,7 +89,7 @@ func InitKstaticWorker() (*KstaticWorker, error) {
 	}
 
 	handles := []common.AttachHandle{
-		{common.KTracePointType, "register_modules", "syscalls/sys_enter_init_module"},
+		{common.KTracePointType, "register_modules", "module/module_load"},
 		{common.KTracePointType, "test_ringbuf", "syscalls/sys_enter_execve"},
 		{common.KTracePointType, "load_kernel_mem", "syscalls/sys_enter_write"},
 	}
@@ -320,7 +320,7 @@ func (ksworker *KstaticWorker) StartPollRingBuffer() {
 		for {
 			select {
 			case data := <-rb.Info.BufChan:
-				log.Printf("%v", common.GetHexHashString(data))
+				log.Printf("%v", string(data))
 			}
 		}
 	}()

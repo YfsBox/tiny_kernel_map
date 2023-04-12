@@ -60,16 +60,23 @@ __always_inline int *read_global_value(int index, int *value) {
 }
 
 
-SEC("tracepoint/syscalls/sys_enter_init_module")
-int register_modules(struct trace_event_raw_sys_enter *ctx) {
-    char tmpbuf[256];
-    struct module *mod = (struct module *) ctx->args[2];
+SEC("tracepoint/module/module_load")
+int register_modules(void *ctx) {
+    bpf_printk("begin register modules");
+    /*struct module *mod = (struct module *) ctx->args[2];
     char *filename = (char *) ctx->args[0];
     if (!mod) {
         return 0;
     }
-    bpf_probe_read_str(tmpbuf, sizeof(tmpbuf), filename);
-    bpf_printk("init_module: %s and %s", filename, mod->name);
+
+    struct ring_buffer_msg *ring_buffer = bpf_ringbuf_reserve(&mrb, sizeof(struct ring_buffer_msg), 0);
+    if (!ring_buffer) {
+        return 0;
+    }
+    bpf_probe_read_str(ring_buffer->msg_, sizeof(filename), filename);
+    // bpf_printk("init_module: %s and %s", filename, mod->name);
+    bpf_ringbuf_submit(ring_buffer, 0);
+    bpf_printk("the init_module happened");*/
     return 0;
 }
 
@@ -101,7 +108,6 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
     int curr_load;
     int *curr_load_ptr = read_global_value(CURR_LOAD_SYMBOL_IDX, &curr_load);
     if (!curr_load_ptr || curr_load < 0 || curr_load > 4) {
-        bpf_printk("read curr load ptr error");
         return 0;
     }
 
@@ -109,7 +115,6 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
     int user_pid;
     int *user_pid_ptr = read_global_value(USER_PID_IDX, &user_pid);
     if (!user_pid_ptr || user_pid != curr_pid) {
-        bpf_printk("read user pid ptr error");
         return 0;
     }
 
@@ -117,21 +122,18 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
     int init_handle_fd;
     int *init_handle_fd_ptr = read_global_value(INIT_HANDLE_FD_IDX, &init_handle_fd);
     if (!init_handle_fd_ptr || init_handle_fd != write_fd) {
-        bpf_printk("init handle fd ptr error");
         return 0;
     }
 
     uint64_t *base_offset = bpf_map_lookup_elem(&kstatic_map, &curr_load);
     uint64_t *load_size = bpf_map_lookup_elem(&kstatic_size_map, &curr_load);
     if (!base_offset || !load_size) {
-        bpf_printk("read kstatic map error");
         return 0;
     }
 
     uint64_t size, base;
     bpf_probe_read(&size, sizeof(uint64_t), load_size);
     bpf_probe_read(&base, sizeof(uint64_t), base_offset);
-    bpf_printk("the load size is %d, the base is %llx, the idx is %d", size, base, curr_load);
 
     int rbidx = 0;
     struct read_buffer *rbuffer = bpf_map_lookup_elem(&read_buffer_map, &rbidx);
@@ -143,15 +145,10 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
     }
 
     bpf_probe_read_kernel(rbuffer->buffer_, size, (char *) base);
-    crc_uint64_t *hash_msg = bpf_ringbuf_reserve(&mrb, sizeof(crc_uint64_t), 0);
-    if (!hash_msg) {
-        return 0;
-    }
+
     crc_uint64_t crc_code = 0;
     crc64(rbuffer->buffer_, size, &crc_code);
     bpf_map_update_elem(&kernel_crc_map, &curr_load, &crc_code, BPF_ANY);
-    bpf_probe_read(hash_msg, sizeof(crc_uint64_t), &crc_code);
-    bpf_ringbuf_submit(hash_msg, 0);
 
     curr_load++;
     int key = 0;
@@ -165,3 +162,4 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
 // 3. 读取内存内容时尽量别用bpf_probe_read_str，这样会因为0截断
 // 4. 已经分配的内存如果不submit也会出错
 // 5. bpftool prog load build/bpfs/kernel.bpf.o /sys/fs/bpf/kernel
+// 6. cat /sys/kernel/debug/tracing/:trace_pipe
