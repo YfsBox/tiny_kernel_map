@@ -37,13 +37,6 @@ func InitWorkercore(mname string, handles []AttachHandle, rbufs []string, maps [
 	}
 	log.Printf("New Moudle From %v ok", mname)
 
-	/*for global, val := range globals {
-		if err = core.Moudle.InitGlobalVariable(global, val); err != nil {
-			log.Printf("The err is when Init Global %v: %v", global, err)
-			return nil, err
-		}
-	}*/
-
 	if err = core.Moudle.BPFLoadObject(); err != nil {
 		log.Printf("loadObject error: %v", err)
 		return nil, err

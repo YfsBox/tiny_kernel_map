@@ -5,11 +5,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	helpers "github.com/aquasecurity/libbpfgo/helpers"
-	"kernel_hash/common"
 	"log"
+	"main/common"
 	"os"
+	"strings"
 	"syscall"
-	"time"
+	// "time"
 	"unsafe"
 )
 
@@ -41,6 +42,7 @@ const (
 	UserPidGlobal         = "user_pid"
 
 	LoadKernelMemMsg = "LOAD OK"
+	NotifyMeasureMsg = "BEGIN NOTIFY"
 )
 
 type KstaticWorker struct {
@@ -156,14 +158,6 @@ func (ksworker *KstaticWorker) LoadGlobalValues(globals map[string]int32) error 
 		LoadfdGlobal,
 		UserPidGlobal,
 	}
-	/*for i := 0; i < global_len; i++ {
-		key := int32(i)
-		value := globals[]
-		if err := global_map.Map.Update(unsafe.Pointer(&key), unsafe.Pointer(&value)); err != nil {
-			log.Printf("LoadGlobalValue error in Update: %v", err)
-			return err
-		}
-	}*/
 	for i, name := range global_names {
 		value := globals[name]
 		if err := global_map.Map.Update(unsafe.Pointer(&i), unsafe.Pointer(&value)); err != nil {
@@ -193,12 +187,13 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 		name := ksworker.SymbolNames[i]
 
 		if name == SysCallTableSymbol {
-			load_size = 313 * 8
+			load_size = 323 * 16
 		} else if name == IdtTableSymbol {
 			load_size = 4096
 		} else if name == StartExTableSymbol {
 			load_size = kallsyms_map[StopExTableSymbol].Address - address
 		} else if name == InitTaskSymbol {
+			// load_size = 300
 			load_size = 1972
 		}
 
@@ -216,36 +211,28 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 	return err
 }
 
-func (ksworker *KstaticWorker) LoadKernelMemory() error {
+func (ksworker *KstaticWorker) LoadKernelMemory(inited bool) error {
 	if ksworker.LoadHandlefd <= 0 {
 		return fmt.Errorf("The Loadhandle fd is not open right")
 	}
-	buf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, uint64(1))
+	wbuf := make([]byte, 8)
+	rbuf := make([]byte, 8)
+	if inited {
+		for i := range wbuf {
+			wbuf[i] = 0xf
+		}
+	}
 
 	var rb = ksworker.GetRingBUffer()
 	rb.Start()
-
 	var load_time = len(ksworker.SymbolNames)
-	for i := 0; i < load_time; {
-		if _, err := syscall.Write(ksworker.LoadHandlefd, buf); err != nil {
+	// time.Sleep(500 * time.Millisecond)
+	for i := 0; i < load_time; i++ {
+		if _, err := syscall.Write(ksworker.LoadHandlefd, wbuf); err != nil {
 			return fmt.Errorf("Write to loadHandle error: %v", err)
 		}
-		select {
-		case data := <-rb.Info.BufChan:
-			// data_str := string(data)
-			/*
-				if i == IdtTbldIdx {
-					common.PrintIDTTable(data)
-				} else {
-					common.PrintMemFormat(data)
-				}*/
-			log.Printf("The hash is %v", common.GetHexHashString(data))
-			i++
-		}
-		time.Sleep(1 * time.Second)
+		syscall.Read(ksworker.LoadHandlefd, rbuf)
 	}
-
 	return nil
 }
 
@@ -266,12 +253,15 @@ func (ksworker *KstaticWorker) DumpMemCrc() error {
 	crc_map := ksworker.GetCrcHashMap()
 	kernel_num := len(ksworker.SymbolNames)
 	for i := 0; i < kernel_num; i++ {
+		if ksworker.SymbolNames[i] == StopExTableSymbol {
+			continue
+		}
 		value, err := crc_map.Map.GetValue(unsafe.Pointer(&i))
 		if err != nil {
 			return err
 		}
 		val := binary.LittleEndian.Uint64(value)
-		log.Printf("The crc hash is %v", val)
+		log.Printf("The crc hash of %v is %v", ksworker.SymbolNames[i], val)
 	}
 	return nil
 }
@@ -316,12 +306,21 @@ func (ksworker *KstaticWorker) StartPollRingBuffer() {
 		rb.Start()
 	}
 	log.Printf("begin poll ring buffer")
-	go func() {
-		for {
-			select {
-			case data := <-rb.Info.BufChan:
-				log.Printf("%v", string(data))
+
+	for {
+		select {
+		case data := <-rb.Info.BufChan:
+			msg := string(data)
+			if strings.Contains(msg, NotifyMeasureMsg) {
+				log.Printf("begin measure from ebpf")
+				go func() {
+					if err := ksworker.LoadKernelMemory(true); err != nil {
+						log.Printf("Measure Memory error: %v", err)
+					}
+				}()
+			} else {
+				log.Printf("Get Message from ebpf: %v", msg)
 			}
 		}
-	}()
+	}
 }

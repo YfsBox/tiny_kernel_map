@@ -6,6 +6,8 @@
 #include "crc.h"
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
+char notify_measure[] = "BEGIN NOTIFY";
+char warn_message[] = "WORN MESSAGE";
 
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
@@ -61,24 +63,17 @@ __always_inline int *read_global_value(int index, int *value) {
 
 
 SEC("tracepoint/module/module_load")
-int register_modules(void *ctx) {
-    bpf_printk("begin register modules");
-    /*struct module *mod = (struct module *) ctx->args[2];
-    char *filename = (char *) ctx->args[0];
-    if (!mod) {
-        return 0;
-    }
-
+int register_modules(struct trace_event_raw_module_load *ctx) {
     struct ring_buffer_msg *ring_buffer = bpf_ringbuf_reserve(&mrb, sizeof(struct ring_buffer_msg), 0);
     if (!ring_buffer) {
         return 0;
     }
-    bpf_probe_read_str(ring_buffer->msg_, sizeof(filename), filename);
-    // bpf_printk("init_module: %s and %s", filename, mod->name);
+    bpf_probe_read(ring_buffer->msg_, sizeof(notify_measure), notify_measure);
     bpf_ringbuf_submit(ring_buffer, 0);
-    bpf_printk("the init_module happened");*/
     return 0;
 }
+
+
 
 SEC("tracepoint/syscalls/sys_enter_execve")
 int test_ringbuf(struct trace_event_raw_sys_enter *ctx) {   // some code for test
@@ -125,15 +120,18 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
         return 0;
     }
 
+    bpf_printk("curr load is %d", curr_load);
+
     uint64_t *base_offset = bpf_map_lookup_elem(&kstatic_map, &curr_load);
     uint64_t *load_size = bpf_map_lookup_elem(&kstatic_size_map, &curr_load);
     if (!base_offset || !load_size) {
         return 0;
     }
 
-    uint64_t size, base;
+    uint64_t size = 0, base = 0;
     bpf_probe_read(&size, sizeof(uint64_t), load_size);
     bpf_probe_read(&base, sizeof(uint64_t), base_offset);
+   
 
     int rbidx = 0;
     struct read_buffer *rbuffer = bpf_map_lookup_elem(&read_buffer_map, &rbidx);
@@ -143,14 +141,38 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
     if (size >= MAX_BUFFER_SIZE) {
         return 0;
     }
-
-    bpf_probe_read_kernel(rbuffer->buffer_, size, (char *) base);
+    bpf_printk("read %llu from base", size % MAX_BUFFER_SIZE);
+    bpf_probe_read_kernel(rbuffer->buffer_, size % MAX_BUFFER_SIZE, (char *) base);
 
     crc_uint64_t crc_code = 0;
     crc64(rbuffer->buffer_, size, &crc_code);
-    bpf_map_update_elem(&kernel_crc_map, &curr_load, &crc_code, BPF_ANY);
 
+    uint64_t *is_inited_ptr = (uint64_t *) ctx->args[1];
+    uint64_t is_inited = 0;
+    bpf_probe_read(&is_inited, sizeof(uint64_t), is_inited_ptr);
+    bpf_printk("the is inited is %lld", is_inited);
+
+    if (is_inited != 0) {
+        crc_uint64_t *static_crc_code_ptr = bpf_map_lookup_elem(&kernel_crc_map, &curr_load);
+        crc_uint64_t static_crc_code;
+        bpf_probe_read_kernel(&static_crc_code, sizeof(crc_uint64_t), static_crc_code_ptr);
+        bpf_printk("the static is %lld, and the crc_code is %lld", static_crc_code, crc_code);
+        if (static_crc_code != crc_code) {
+            struct ring_buffer_msg *msg = bpf_ringbuf_reserve(&mrb, sizeof(struct ring_buffer_msg), 0);
+            if (!msg) {
+                return 0;
+            }
+            bpf_probe_read_kernel(msg->msg_, sizeof(warn_message), warn_message);
+            bpf_ringbuf_submit(msg, 0);
+        }
+    } else {
+        bpf_map_update_elem(&kernel_crc_map, &curr_load, &crc_code, BPF_ANY);
+    }
+    // update curr_load
     curr_load++;
+    if (curr_load >= KERNEL_SYMBOL_NUMBER) {
+        curr_load = 0;
+    }
     int key = 0;
     bpf_map_update_elem(&global_val_map, &key, &curr_load, BPF_ANY);
 
@@ -162,4 +184,5 @@ int load_kernel_mem(struct trace_event_raw_sys_enter *ctx) {
 // 3. 读取内存内容时尽量别用bpf_probe_read_str，这样会因为0截断
 // 4. 已经分配的内存如果不submit也会出错
 // 5. bpftool prog load build/bpfs/kernel.bpf.o /sys/fs/bpf/kernel
-// 6. cat /sys/kernel/debug/tracing/:trace_pipe
+// 6. cat /sys/kernel/debug/tracing/trace_pipe
+// 7. cat  /sys/kernel/debug/tracing/trace_pipe

@@ -1,8 +1,8 @@
-package kernel_hash
+package main
 
 import (
-	"kernel_hash/kstatic"
 	"log"
+	"main/kstatic"
 	"strings"
 	"sync"
 	"testing"
@@ -40,8 +40,8 @@ func Test_InitKstaticWorker(t *testing.T) {
 	}
 
 	for name, _ := range addr_map {
-		t.Logf("Symbol Name: %v, Symbol addr: 0x%016x", name, addr_map[name])
-		t.Logf("Symbol Name: %v, Symbol load size: 0x%016x", name, size_map[name])
+		log.Printf("Symbol Name: %v, Symbol addr: 0x%016x", name, addr_map[name])
+		log.Printf("Symbol Name: %v, Symbol load size: 0x%016x", name, size_map[name])
 	}
 
 	if err = worker.DumpGlobals(); err != nil {
@@ -49,7 +49,7 @@ func Test_InitKstaticWorker(t *testing.T) {
 	}
 
 	log.Printf("Begin try to load kernel mem......")
-	if err = worker.LoadKernelMemory(); err != nil {
+	if err = worker.LoadKernelMemory(false); err != nil {
 		t.Fatalf("LoadKernelMemory error: %v", err)
 	}
 

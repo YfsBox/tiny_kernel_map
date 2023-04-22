@@ -5,6 +5,7 @@
 #ifndef KERNEL_MAP_COMMON_H
 #define KERNEL_MAP_COMMON_H
 
+#define IS_INITED 1
 #define TS_BUF_LEN 32
 #define MAX_KSYM_NAME_SIZE 64
 #define MAX_MSG_STR_SIZE 128
@@ -14,12 +15,7 @@ typedef unsigned long uint32;
 
 typedef unsigned long long base_offset_t;
 
-#define START_EXTBL_MAP_IDX 1
-#define STOP_EXTBL_MAP_IDX 2
-#define INIT_TASK_MAP_IDX 3
-#define SYSTBL_MAP_IDX 4
-#define IDT_MAP_IDX 5
-#define END_SYMBOL_MAP_IDX 6
+#define KERNEL_SYMBOL_NUMBER 5
 #define SYSCALL_TABLE_SIZE 313 * 8
 
 // #define GLOBAL_VALUES_IDX 0

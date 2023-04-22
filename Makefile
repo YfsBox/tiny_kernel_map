@@ -14,10 +14,12 @@ bpf: $(TARGET_BPF)
 main: $(TARGET)
 test:
 	$(go_env) go test -v
+run:
+	$(go_env) go test -v
 
 go_env := CC=clang CGO_CFLAGS="-I $(LIBBPF_HEADERS)" CGO_LDFLAGS="$(LIBBPF_OBJ)"
 $(TARGET): $(GO_SRC)
-	$(go_env) go build -o $(TARGET)
+	$(go_env) go build -o kernel_map
 
 $(TARGET_BPF): $(BPF_SRC)
 	./build.sh

@@ -1,9 +1,9 @@
-package kernel_hash
+package main
 
 import (
 	"C"
-	"kernel_hash/kstatic"
 	"log"
+	"main/kstatic"
 	"sync"
 )
 
@@ -38,7 +38,7 @@ func main() {
 	}
 
 	log.Printf("Begin try to load kernel mem......")
-	if err = worker.LoadKernelMemory(); err != nil {
+	if err = worker.LoadKernelMemory(false); err != nil {
 		log.Fatalf("LoadKernelMemory error: %v", err)
 	}
 

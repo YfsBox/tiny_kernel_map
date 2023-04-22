@@ -6,6 +6,7 @@
 #define KERNEL_MAP_CRC_H
 
 #define CRC_BYTES_SIZE 8
+#define CRC_BUFFER_MAX_LEN 8192
 
 typedef unsigned long long crc_uint64_t;
 typedef unsigned char crc_uint8_t;
@@ -141,14 +142,15 @@ const unsigned long long crc64_tab[256] = {
         0x536fa08fdfd90e51ULL, 0x29b7d047efec8728ULL,
 };
 
-__always_inline int crc64(const char *s, int l, crc_uint64_t *crc) {
-    int j;
+__always_inline int crc64(const char *s, unsigned long long l, crc_uint64_t *crc) {
+    unsigned long long j;
     crc_uint64_t tmp_crc;
-    for (j = 0; j < l && j < sizeof(s); j++) {
+    for (j = 0; j < l && j < CRC_BUFFER_MAX_LEN; j++) {
         crc_uint8_t byte = s[j];
         tmp_crc = *crc;
         *crc = crc64_tab[(crc_uint8_t) (tmp_crc ^ byte)] ^ (tmp_crc >> 8);
     }
     return 0;
 }
+
 #endif //KERNEL_MAP_CRC_H
