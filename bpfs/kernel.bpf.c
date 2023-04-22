@@ -6,8 +6,6 @@
 #include "crc.h"
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
-char notify_measure[] = "BEGIN NOTIFY";
-char warn_message[] = "WORN MESSAGE";
 
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);

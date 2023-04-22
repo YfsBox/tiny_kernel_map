@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"main/kstatic"
+	"main/workers"
 	"strings"
 	"sync"
 	"testing"
@@ -20,10 +20,10 @@ func Test_SplitDirAndFile(t *testing.T) {
 
 func Test_InitKstaticWorker(t *testing.T) {
 	var err error
-	var worker *kstatic.KstaticWorker
+	var worker *workers.KstaticWorker
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	if worker, err = kstatic.InitKstaticWorker(); err != nil {
+	if worker, err = workers.InitKstaticWorker(); err != nil {
 		t.Fatalf("InitKstaticWoker error: %v", err)
 		return
 	}
@@ -61,4 +61,18 @@ func Test_InitKstaticWorker(t *testing.T) {
 	worker.StartPollRingBuffer()
 	wg.Wait()
 
+}
+
+func Test_RunProcessWorker(t *testing.T) {
+	var err error
+	// var worker *workers.ProcessWorker
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	if _, err = workers.InitProcessWorker(); err != nil {
+		t.Fatalf("InitProcessWorker error: %v", err)
+		return
+	}
+
+	wg.Wait()
 }

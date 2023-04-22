@@ -41,5 +41,8 @@ struct global_values {
     int user_pid_;
 };
 
+char notify_measure[] = "BEGIN NOTIFY";
+char warn_message[] = "WORN MESSAGE";
+
 
 #endif //KERNEL_MAP_COMMON_H

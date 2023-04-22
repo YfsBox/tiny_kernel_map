@@ -1,4 +1,4 @@
-package kstatic
+package workers
 
 import "C"
 import (
@@ -25,11 +25,9 @@ const (
 	MaxKsymNameLen         = 64
 	GlobalSymbolOwner      = "system"
 
-	StartExTblIdx = 0
-	StopExTblIdx  = 1
-	InitTaskIdx   = 2
-	SysCallTblIdx = 3
-	IdtTbldIdx    = 4
+	SystemCallTableSize = 323 * 16
+	IdtSize             = 4096
+	InitTaskSize        = 1972
 
 	StartExTableSymbol = "__start___ex_table"
 	StopExTableSymbol  = "__stop___ex_table"
@@ -187,14 +185,13 @@ func (ksworker *KstaticWorker) LoadKallsymsValues() error {
 		name := ksworker.SymbolNames[i]
 
 		if name == SysCallTableSymbol {
-			load_size = 323 * 16
+			load_size = SystemCallTableSize
 		} else if name == IdtTableSymbol {
-			load_size = 4096
+			load_size = IdtSize
 		} else if name == StartExTableSymbol {
 			load_size = kallsyms_map[StopExTableSymbol].Address - address
 		} else if name == InitTaskSymbol {
-			// load_size = 300
-			load_size = 1972
+			load_size = InitTaskSize
 		}
 
 		err = kernel_map.Map.Update(unsafe.Pointer(&key), unsafe.Pointer(&address))

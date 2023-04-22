@@ -2,17 +2,18 @@ package main
 
 import (
 	"C"
+	"flag"
 	"log"
-	"main/kstatic"
+	"main/workers"
 	"sync"
 )
 
-func main() {
+func RunKstatiWorker() {
 	var err error
-	var worker *kstatic.KstaticWorker
+	var worker *workers.KstaticWorker
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	if worker, err = kstatic.InitKstaticWorker(); err != nil {
+	if worker, err = workers.InitKstaticWorker(); err != nil {
 		log.Fatalf("InitKstaticWoker error: %v", err)
 		return
 	}
@@ -49,4 +50,43 @@ func main() {
 
 	worker.StartPollRingBuffer()
 	wg.Wait()
+}
+
+func RunProcessWorker() {
+	var err error
+	// var worker *workers.ProcessWorker
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	log.Printf("Init Process Worker......")
+	if _, err = workers.InitProcessWorker(); err != nil {
+		log.Printf("InitProcessWorker error %v", err)
+		return
+	}
+
+	wg.Wait()
+}
+
+func main() {
+	var enable_kstatic bool
+	var enable_process bool
+
+	wg := sync.WaitGroup{}
+
+	flag.BoolVar(&enable_kstatic, "kstatic", false, "enable kstatic worker")
+	flag.BoolVar(&enable_process, "process", false, "enable process worker")
+
+	flag.Parse()
+
+	if enable_kstatic {
+		wg.Add(1)
+		go RunKstatiWorker()
+	}
+
+	if enable_process {
+		wg.Add(1)
+		go RunProcessWorker()
+	}
+
+	wg.Wait()
+
 }

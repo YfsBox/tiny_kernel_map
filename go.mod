@@ -1,4 +1,4 @@
-module kernel_hash
+module main
 
 go 1.18
 
